@@ -149,6 +149,8 @@ it is tapped.
 
 `READER_BOOKMARKS` - If TRUE, enables page bookmark support.
 
+`READER_DIRECTION_VERTICAL` - If TRUE, can scroll vertically to change page.
+
 ### ReaderDocument Archiving
 
 To change where the property list for ReaderDocument objects is stored

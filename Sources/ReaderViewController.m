@@ -87,10 +87,15 @@
 
 - (void)updateContentSize:(UIScrollView *)scrollView
 {
+#if READER_DIRECTION_VERTICAL
+    CGFloat contentHeight = (scrollView.bounds.size.height * maximumPage); // Height
+    
+    CGFloat contentWidth = scrollView.bounds.size.width; // Width
+#else
 	CGFloat contentHeight = scrollView.bounds.size.height; // Height
 
-	CGFloat contentWidth = (scrollView.bounds.size.width * maximumPage);
-
+	CGFloat contentWidth = (scrollView.bounds.size.width * maximumPage); // Width
+#endif
 	scrollView.contentSize = CGSizeMake(contentWidth, contentHeight);
 }
 
@@ -104,17 +109,21 @@
 			NSInteger page = [key integerValue]; // Page number value
 
 			CGRect viewRect = CGRectZero; viewRect.size = scrollView.bounds.size;
-
+#if READER_DIRECTION_VERTICAL
+            viewRect.origin.y = (viewRect.size.height * (page - 1)); // Update Y
+#else
 			viewRect.origin.x = (viewRect.size.width * (page - 1)); // Update X
-
+#endif
 			contentView.frame = CGRectInset(viewRect, scrollViewOutset, 0.0f);
 		}
 	];
 
 	NSInteger page = currentPage; // Update scroll view offset to current page
-
+#if READER_DIRECTION_VERTICAL
+    CGPoint contentOffset = CGPointMake(0.0f, (scrollView.bounds.size.height * (page - 1)));
+#else
 	CGPoint contentOffset = CGPointMake((scrollView.bounds.size.width * (page - 1)), 0.0f);
-
+#endif
 	if (CGPointEqualToPoint(scrollView.contentOffset, contentOffset) == false) // Update
 	{
 		scrollView.contentOffset = contentOffset; // Update content offset
@@ -128,9 +137,11 @@
 - (void)addContentView:(UIScrollView *)scrollView page:(NSInteger)page
 {
 	CGRect viewRect = CGRectZero; viewRect.size = scrollView.bounds.size;
-
+#if READER_DIRECTION_VERTICAL
+    viewRect.origin.y = (viewRect.size.height * (page - 1)); viewRect = CGRectInset(viewRect, scrollViewOutset, 0.0f);
+#else
 	viewRect.origin.x = (viewRect.size.width * (page - 1)); viewRect = CGRectInset(viewRect, scrollViewOutset, 0.0f);
-
+#endif
 	NSURL *fileURL = document.fileURL; NSString *phrase = document.password; NSString *guid = document.guid; // Document properties
 
 	ReaderContentView *contentView = [[ReaderContentView alloc] initWithFrame:viewRect fileURL:fileURL page:page password:phrase]; // ReaderContentView
@@ -142,14 +153,22 @@
 
 - (void)layoutContentViews:(UIScrollView *)scrollView
 {
-	CGFloat viewWidth = scrollView.bounds.size.width; // View width
-
+	
+#if READER_DIRECTION_VERTICAL
+    CGFloat viewHeight = scrollView.bounds.size.height; // View height
+    CGFloat contentOffsetY = scrollView.contentOffset.y; // Content offset Y
+    
+    NSInteger pageB = ((contentOffsetY + viewHeight - 1.0f) / viewHeight); // Pages
+    
+    NSInteger pageA = (contentOffsetY / viewHeight); pageB += 2; // Add extra pages
+#else
+    CGFloat viewWidth = scrollView.bounds.size.width; // View width
 	CGFloat contentOffsetX = scrollView.contentOffset.x; // Content offset X
 
 	NSInteger pageB = ((contentOffsetX + viewWidth - 1.0f) / viewWidth); // Pages
 
 	NSInteger pageA = (contentOffsetX / viewWidth); pageB += 2; // Add extra pages
-
+#endif
 	if (pageA < minimumPage) pageA = minimumPage; if (pageB > maximumPage) pageB = maximumPage;
 
 	NSRange pageRange = NSMakeRange(pageA, (pageB - pageA + 1)); // Make page range (A to B)
@@ -204,11 +223,15 @@
 
 - (void)handleScrollViewDidEnd:(UIScrollView *)scrollView
 {
-	CGFloat viewWidth = scrollView.bounds.size.width; // Scroll view width
-
+#if READER_DIRECTION_VERTICAL
+    CGFloat viewHeight = scrollView.bounds.size.height; // Scroll view width
+    CGFloat contentOffsetY = scrollView.contentOffset.y; // Content offset Y
+    NSInteger page = (contentOffsetY / viewHeight); page++; // Page number
+#else
+    CGFloat viewWidth = scrollView.bounds.size.width; // Scroll view width
 	CGFloat contentOffsetX = scrollView.contentOffset.x; // Content offset X
-
-	NSInteger page = (contentOffsetX / viewWidth); page++; // Page number
+    NSInteger page = (contentOffsetX / viewWidth); page++; // Page number
+#endif
 
 	if (page != currentPage) // Only if on different page
 	{
@@ -234,9 +257,11 @@
 		if ((page < minimumPage) || (page > maximumPage)) return;
 
 		currentPage = page; document.pageNumber = [NSNumber numberWithInteger:page];
-
+#if READER_DIRECTION_VERTICAL
+        CGPoint contentOffset = CGPointMake(0.0f, (theScrollView.bounds.size.height * (page - 1)));
+#else
 		CGPoint contentOffset = CGPointMake((theScrollView.bounds.size.width * (page - 1)), 0.0f);
-
+#endif
 		if (CGPointEqualToPoint(theScrollView.contentOffset, contentOffset) == true)
 			[self layoutContentViews:theScrollView];
 		else
@@ -529,9 +554,11 @@
 	if ((maximumPage > minimumPage) && (currentPage != minimumPage))
 	{
 		CGPoint contentOffset = theScrollView.contentOffset; // Offset
-
+#if READER_DIRECTION_VERTICAL
+        contentOffset.y -= theScrollView.bounds.size.height; // View Y--
+#else
 		contentOffset.x -= theScrollView.bounds.size.width; // View X--
-
+#endif
 		[theScrollView setContentOffset:contentOffset animated:YES];
 	}
 }
@@ -541,9 +568,11 @@
 	if ((maximumPage > minimumPage) && (currentPage != maximumPage))
 	{
 		CGPoint contentOffset = theScrollView.contentOffset; // Offset
-
+#if READER_DIRECTION_VERTICAL
+        contentOffset.y += theScrollView.bounds.size.height; // View Y++
+#else
 		contentOffset.x += theScrollView.bounds.size.width; // View X++
-
+#endif
 		[theScrollView setContentOffset:contentOffset animated:YES];
 	}
 }
@@ -616,9 +645,13 @@
 		}
 
 		CGRect nextPageRect = viewRect;
+#if READER_DIRECTION_VERTICAL
+        nextPageRect.size.height = TAP_AREA_SIZE;
+        nextPageRect.origin.y = (viewRect.size.height - TAP_AREA_SIZE);
+#else
 		nextPageRect.size.width = TAP_AREA_SIZE;
 		nextPageRect.origin.x = (viewRect.size.width - TAP_AREA_SIZE);
-
+#endif
 		if (CGRectContainsPoint(nextPageRect, point) == true) // page++
 		{
 			[self incrementPageNumber]; return;
@@ -667,9 +700,13 @@
 		}
 
 		CGRect nextPageRect = viewRect;
+#if READER_DIRECTION_VERTICAL
+        nextPageRect.size.height = TAP_AREA_SIZE;
+        nextPageRect.origin.y = (viewRect.size.height - TAP_AREA_SIZE);
+#else
 		nextPageRect.size.width = TAP_AREA_SIZE;
 		nextPageRect.origin.x = (viewRect.size.width - TAP_AREA_SIZE);
-
+#endif
 		if (CGRectContainsPoint(nextPageRect, point) == true) // page++
 		{
 			[self incrementPageNumber]; return;
